@@ -1,0 +1,263 @@
+/* ========================== */
+/* RESET + BASE STYLES */
+/* ========================== */
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, sans-serif;
+    color: #222;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    scroll-snap-type: y mandatory;
+}
+
+/* Page Navigation Dots */
+
+#page-nav {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.nav-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ccc;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.nav-dot.active {
+  background-color: #0077ff;
+  transform: scale(1.3);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+}
+
+section, .hero {
+  scroll-snap-align: start;
+}
+
+
+/* ========================== */
+/* HERO SECTION */
+/* ========================== */
+.hero {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(to bottom, #d0d7e7, #63718b);
+    color: #fff;
+}
+
+.hero h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    max-width: 850px;
+    margin-bottom: 0.5rem;
+}
+
+.hero p {
+    font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+    max-width: 850px;
+    line-height: 1.5;
+}
+/* Earth Layers */
+.full-page {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+/* Page 2 Earth Layers */
+.info-box {
+  margin-top: 1rem;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  max-width: 80%;
+  text-align: center;
+  flex-wrap: nowrap;
+}
+
+.layer-slice {
+  transition: opacity 0.2s, stroke 0.2s;
+  cursor: pointer;
+}
+
+.layer-slice:hover {
+  stroke: white;
+  stroke-width: 1px;
+}
+
+#earth-layer-info {
+  margin-top: 1rem;
+  padding: 8px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-align: center;
+  width: fit-content;
+}
+
+
+/* Add subtle gradient background */
+#earth-structure-section {
+    background: linear-gradient(to bottom, #63718b, #475a83);
+    color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .earth-structure-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #earth-structure-plot,
+    #earth-layer-info {
+        width: 90%;
+        text-align: center;
+    }
+}
+
+
+/* ========================== */
+/* MAP + GLOBE SECTION */
+/* ========================== */
+#map-section, #country-detail-section {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 2rem;
+    height: 100%
+}
+
+#map-section {
+    background: linear-gradient(to bottom, #475a83, #1f2a3f);
+}
+
+
+/* Globe containers */
+#map-section .globe-container,
+#country-detail-section .globe-container {
+    flex: 0 1 40%;
+    min-width: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* SVG settings */
+#globe-svg {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+}
+
+#globe-svg-2 {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+}
+
+/* Story text */
+.story-text {
+    flex: 0 1 55%;
+    min-width: 150px;
+    margin-left: 2rem;
+    color: #f7f7f7;
+    text-align: left;
+    font-size: clamp(0.9rem, 1.5vw, 1.2rem);
+}
+
+.story-text h2 {
+    font-size: clamp(1.2rem, 2vw, 1.8rem);
+}
+
+/* Country info panel */
+.country-info {
+    flex: 0 1 55%;
+    min-width: 150px;
+    margin-left: 2rem;
+    color: #fff;
+}
+
+.country-info h2 {
+    font-size: clamp(1.2rem, 2vw, 2rem);
+    margin-bottom: 0.5rem;
+}
+
+.country-info p {
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    line-height: 1.5;
+}
+
+#country-detail-section {
+    display: flex;
+    flex-wrap: nowrap;           /* stay side by side */
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 2rem;
+    background: linear-gradient(to bottom, #1f2a3f, #0a1220); /* same gradient as globe 1 */
+}
+
+
+
+
+/* Tooltip */
+#globe-tooltip {
+    position: absolute;
+    pointer-events: none;
+    padding: 5px 10px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    z-index: 1000;
+}
+
+/* ========================== */
+/* RESPONSIVE DESIGN */
+/* ========================== */
+@media (max-width: 900px) {
+    #map-section, #country-detail-section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .globe-container, .story-text, .country-info {
+        flex: 1 1 100%;
+        max-width: 90%;
+        margin: 1rem 0;
+        text-align: center;
+    }
+
+    #globe-svg, #globe-svg-2 {
+        max-height: 50vh;
+    }
+}
