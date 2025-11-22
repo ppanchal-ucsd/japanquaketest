@@ -2,39 +2,171 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Japan Earthquake Live Heatmap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Japan Earthquakes — Animated Heatmap</title>
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- D3 + Leaflet -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Leaflet (CSS first!) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* Minimal styling so the map actually shows */
+    body { margin:0; background:#0f1117; color:#e6e6e6; font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+    .wrap { min-height:100vh; display:grid; place-items:center; padding:32px 16px; }
+    .heatmap-wrap { position:relative; width:min(1100px, 94vw); }
+    #jp-heatmap { width:100%; height:clamp(380px, 70vh, 720px); border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .hud { position:absolute; left:50%; transform:translateX(-50%); top:12px; background:rgba(0,0,0,.55); color:#fff; padding:8px 12px; border-radius:12px; display:flex; gap:10px; align-items:center; font-size:14px; }
+    .controls { display:flex; gap:6px; }
+    .btn { cursor:pointer; border:1px solid rgba(255,255,255,.25); background:transparent; color:#fff; border-radius:8px; padding:6px 10px; font-size:13px; }
+    .btn:hover { background:rgba(255,255,255,.1); }
+    .muted { color:#9aa3ad; text-align:center; }
+    /* Optional: show any JS error nicely */
+    #error { display:none; margin-top:12px; color:#ffb4b4; font-size:14px; }
+  </style>
+</head>
+<body>
+  <section class="wrap">
+    <h2>Japan Earthquakes — Animated Heatmap (from CSV)</h2>
+    <div class="heatmap-wrap">
+      <div id="jp-heatmap"></div>
+      <div class="hud">
+        <b>Japan Earthquakes</b> — <span id="label">Loading…</span>
+        <div class="controls">
+          <button id="play" class="btn">▶ Play</button>
+          <button id="pause" class="btn">⏸ Pause</button>
+        </div>
+      </div>
+    </div>
+    <p class="muted">Heat intensity ~ magnitude; animation steps through time. If you see nothing, ensure you’re serving this page over http (not file://).</p>
+    <div id="error"></div>
+  </section>
+
+  <!-- Scripts at the end so DOM exists -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
-  <style>
-    body {
-      background: #0f1117;
-      color: #e6e6e6;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-    }
-    .full-page { min-height: 92vh; display: grid; place-items: center; gap: 16px; padding: 48px 20px; }
-    .heatmap-wrap { position: relative; width: min(1100px, 94vw); }
-    #jp-heatmap { width: 100%; height: clamp(380px, 70vh, 720px); border-radius: 16px; overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35); }
-    .heatmap-hud { position: absolute; left: 50%; transform: translateX(-50%);
-      top: 12px; background: rgba(0,0,0,.55); color: #fff; padding: 8px 12px; border-radius: 12px;
-      display:flex; gap:10px; align-items:center; font-size: 14px; }
-    .heatmap-controls { display:flex; gap:6px; margin-left: 6px; }
-    .btn { cursor:pointer; border:1px solid rgba(255,255,255,.25); background:transparent; color:#fff;
-      border-radius:8px; padding:6px 10px; font-size:13px; }
-    .btn:hover { background:rgba(255,255,255,.1); }
-    .muted { color:#9aa3ad; text-align:center; }
-  </style>
-</head>
+  <script>
+  (async function () {
+    const DATA_URL = "japan_earthquakes_used.csv";   // <— place CSV next to this HTML file
+    const JAPAN = { lat:36.2, lon:138.25, zoom:5 };
+    const FRAME_MS = 700, HEAT_RADIUS = 18, MIN_OPACITY = 0.2;
+    const labelEl = document.getElementById("label");
+    const errorEl = document.getElementById("error");
 
-<body>
-  <section id="jp-heatmap-section" class="fu
+    // Build map
+    const map = L.map("jp-heatmap", { zoomControl:true, scrollWheelZoom:true })
+      .setView([JAPAN.lat, JAPAN.lon], JAPAN.zoom);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:"© OpenStreetMap"
+    }).addTo(map);
+
+    try {
+      // Load CSV
+      let rows = await d3.csv(DATA_URL, d3.autoType);
+
+      if (!rows || !rows.length) {
+        labelEl.textContent = "No rows in CSV.";
+        return;
+      }
+
+      // Normalize columns
+      const sample = rows[0] || {};
+      const has = k => Object.prototype.hasOwnProperty.call(sample, k);
+      const latKey  = has("lat") ? "lat" : (has("latitude") ? "latitude" : null);
+      const lonKey  = has("lon") ? "lon" : (has("longitude") ? "longitude" : null);
+      const timeKey = has("time") ? "time" : (has("timestamp") ? "timestamp" : (has("date") ? "date" : null));
+      const magKey  = has("mag") ? "mag" : (has("magnitude") ? "magnitude" : null);
+
+      if (!latKey || !lonKey || !timeKey) {
+        labelEl.textContent = "CSV must have time, lat, lon (mag optional).";
+        return;
+      }
+
+      // Filter to Japan bbox & clean
+      const BBOX = { latMin:24, latMax:46, lonMin:122, lonMax:154 };
+      rows = rows.filter(d =>
+        Number.isFinite(+d[latKey]) && Number.isFinite(+d[lonKey]) &&
+        d[latKey] >= BBOX.latMin && d[latKey] <= BBOX.latMax &&
+        d[lonKey] >= BBOX.lonMin && d[lonKey] <= BBOX.lonMax
+      ).map(d => ({
+        t: new Date(d[timeKey]),
+        lat: +d[latKey],
+        lon: +d[lonKey],
+        mag: magKey ? (+d[magKey] || null) : null
+      })).filter(d => d.t.toString() !== "Invalid Date");
+
+      if (!rows.length) {
+        labelEl.textContent = "No Japan rows in CSV.";
+        return;
+      }
+
+      // Weight from magnitude
+      rows.forEach(d => {
+        const m = d.mag != null ? Math.max(0, Math.min(9, d.mag)) : 0;
+        d.w = Math.pow(m/9, 1.5) * 0.8 + 0.2;  // 0.2..1.0
+      });
+
+      // Time granularity
+      const spanDays = (d3.max(rows, d => d.t) - d3.min(rows, d => d.t)) / 86400000;
+      let gran = "monthly", fmt = d3.timeFormat("%Y-%m");
+      if (spanDays <= 31) { gran = "daily";  fmt = d3.timeFormat("%Y-%m-%d"); }
+      else if (spanDays <= 180) { gran = "weekly"; fmt = d3.timeFormat("Week of %Y-%m-%d"); }
+
+      // Group into frames
+      const keyFn = d => {
+        if (gran === "daily")  return d3.timeDay.floor(d.t).toISOString();
+        if (gran === "weekly") return d3.timeMonday.floor(d.t).toISOString();
+        return d3.timeMonth.floor(d.t).toISOString();
+      };
+      const groups = d3.group(rows, keyFn);
+      const keys = Array.from(groups.keys()).sort((a,b) => new Date(a) - new Date(b));
+      const frames = keys.map(k => groups.get(k).map(d => [d.lat, d.lon, d.w]));
+      const labels = keys.map(k => fmt(new Date(k)));
+
+      // Heat layer
+      const heat = L.heatLayer(frames[0] || [], {
+        radius: HEAT_RADIUS, blur: HEAT_RADIUS, maxZoom: 7, minOpacity: MIN_OPACITY
+      }).addTo(map);
+
+      // Animation
+      let i = 0, timer = null;
+      function renderFrame(idx){
+        if (!frames.length) return;
+        heat.setLatLngs(frames[idx]);
+        labelEl.textContent = labels[idx] || "";
+      }
+      function play(){
+        if (timer || !frames.length) return;
+        renderFrame(i);
+        timer = setInterval(() => {
+          i = (i + 1) % frames.length;
+          renderFrame(i);
+        }, FRAME_MS);
+      }
+      function pause(){
+        if (timer) { clearInterval(timer); timer = null; }
+      }
+      document.getElementById("play").addEventListener("click", play);
+      document.getElementById("pause").addEventListener("click", pause);
+
+      // Scroll-trigger
+      const sectionEl = document.getElementById("jp-heatmap-section") || document.body;
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => (e.isIntersecting && e.intersectionRatio >= 0.5) ? play() : pause());
+      }, { threshold: [0, 0.5, 1] });
+      io.observe(sectionEl);
+
+      renderFrame(0);
+      labelEl.textContent = "Ready — scroll here to play";
+
+    } catch (err) {
+      labelEl.textContent = "Error loading data.";
+      errorEl.style.display = "block";
+      errorEl.textContent = (err && err.message) ? err.message : String(err);
+      console.error(err);
+    }
+  })();
+  </script>
+</body>
+</html>
